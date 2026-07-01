@@ -1,6 +1,6 @@
 {
   "name": "Alam Tech QR",
   "description": "A modern, clean, and responsive QR code generator and scanner with instant decoding and dark mode.",
-  "requestFramePermissions": ["camera"],
+  "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

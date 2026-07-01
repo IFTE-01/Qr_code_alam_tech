@@ -11,7 +11,7 @@ interface CreateViewProps {
   onNavigate: (view: 'home' | 'scan') => void;
 }
 
-type TabType = 'url' | 'text' | 'phone' | 'wifi' | 'email' | 'sms' | 'image';
+type TabType = 'url' | 'text' | 'phone' | 'wifi' | 'email' | 'sms';
 
 export default function CreateView({ onNavigate }: CreateViewProps) {
   // Input form states
@@ -107,13 +107,6 @@ export default function CreateView({ onNavigate }: CreateViewProps) {
           });
         }
         break;
-      case 'image':
-        if (imageType === 'url') {
-          finalValue = imageUrlInput.trim();
-        } else {
-          finalValue = imageUploadBase64;
-        }
-        break;
     }
 
     if (finalValue) {
@@ -125,8 +118,7 @@ export default function CreateView({ onNavigate }: CreateViewProps) {
     activeTab, urlInput, textInput, phoneInput, 
     wifiSsid, wifiPassword, wifiSecurity, wifiHidden,
     emailAddress, emailSubject, emailBody,
-    smsPhone, smsMessage,
-    imageType, imageUrlInput, imageUploadBase64
+    smsPhone, smsMessage
   ]);
 
   // Generate QR Code onto canvas and as Data URL
@@ -292,7 +284,6 @@ export default function CreateView({ onNavigate }: CreateViewProps) {
                 { id: 'wifi', label: 'Wi-Fi', icon: Wifi },
                 { id: 'email', label: 'Email', icon: Mail },
                 { id: 'sms', label: 'SMS', icon: MessageSquare },
-                { id: 'image', label: 'Image', icon: ImageIcon },
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isSelected = activeTab === tab.id;
@@ -504,96 +495,6 @@ export default function CreateView({ onNavigate }: CreateViewProps) {
                         id="input-sms-body"
                       />
                     </div>
-                  </div>
-                )}
-
-                {/* 7. Image Form */}
-                {activeTab === 'image' && (
-                  <div className="space-y-4">
-                    <div className="flex border-b border-white/5 pb-1" id="image-tabs-container">
-                      <button
-                        type="button"
-                        onClick={() => setImageType('url')}
-                        className={`flex-1 pb-2 font-sans text-xs font-semibold text-center cursor-pointer ${
-                          imageType === 'url' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-400 hover:text-white'
-                        }`}
-                      >
-                        Image URL
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setImageType('upload')}
-                        className={`flex-1 pb-2 font-sans text-xs font-semibold text-center cursor-pointer ${
-                          imageType === 'upload' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-400 hover:text-white'
-                        }`}
-                      >
-                        File Upload (Base64 Binary)
-                      </button>
-                    </div>
-
-                    {imageType === 'url' ? (
-                      <div className="space-y-2">
-                        <label className="font-sans text-xs font-semibold text-gray-300">Public Image URL</label>
-                        <input
-                          type="url"
-                          value={imageUrlInput}
-                          onChange={(e) => setImageUrlInput(e.target.value)}
-                          placeholder="https://example.com/assets/banner.jpg"
-                          className="w-full rounded-xl border border-white/10 bg-[#050505] px-4 py-3 font-sans text-sm text-white placeholder-gray-500 outline-none focus:border-blue-500/50 transition-colors"
-                          id="input-image-url"
-                        />
-                        <span className="font-sans text-[11px] text-gray-500 block">Encodes a static internet address to retrieve the image.</span>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <label className="font-sans text-xs font-semibold text-gray-300">Choose Image File</label>
-                        <div 
-                          onClick={() => fileInputRef.current?.click()}
-                          className="group relative cursor-pointer border-2 border-dashed border-white/10 hover:border-blue-500/30 rounded-xl bg-[#050505]/40 p-6 flex flex-col items-center justify-center text-center transition-all"
-                          id="image-dropzone"
-                        >
-                          <UploadCloud className="h-10 w-10 text-gray-500 group-hover:text-blue-500 group-hover:scale-110 transition-all mb-3" />
-                          <span className="font-sans text-sm text-gray-300 font-semibold mb-1">Click to browse your device</span>
-                          <span className="font-sans text-xs text-gray-500">Supported types: JPG, PNG, WEBP</span>
-                          
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                          />
-                        </div>
-
-                        {isCompressing && (
-                          <div className="flex items-center space-x-2 text-gray-400 font-sans text-xs bg-[#050505]/50 px-3 py-2 rounded-lg">
-                            <RefreshCw className="h-3.5 w-3.5 animate-spin text-blue-500" />
-                            <span>Compressing and scaling down image vectors...</span>
-                          </div>
-                        )}
-
-                        {imageUploadBase64 && !isCompressing && (
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between text-xs bg-blue-600/10 border border-blue-600/20 px-4 py-2.5 rounded-lg text-blue-400">
-                              <span>Binary payload ready!</span>
-                              <span className="font-mono">{compressionRatio}</span>
-                            </div>
-                            
-                            <div className="flex items-center space-x-3 bg-white/5 p-3 rounded-xl border border-white/10">
-                              <img 
-                                src={imageUploadBase64} 
-                                alt="Pre-compressed Vector" 
-                                className="h-12 w-12 rounded object-cover border border-white/10 bg-white"
-                              />
-                              <div>
-                                <h5 className="font-sans font-semibold text-xs text-white">Base64 Encoded Thumbnail</h5>
-                                <p className="font-sans text-[10px] text-gray-400">Perfectly scaled to embed inside 2,900 QR characters limits!</p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 )}
               </motion.div>

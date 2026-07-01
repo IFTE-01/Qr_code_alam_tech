@@ -23,6 +23,7 @@ export default function ScanView({ onNavigate }: ScanViewProps) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -70,6 +71,7 @@ export default function ScanView({ onNavigate }: ScanViewProps) {
   // Initialize and start Camera Media Streams
   const startCamera = async () => {
     setCameraError(null);
+    setScanError(null);
     setDecodedResult(null);
     
     try {
@@ -153,6 +155,45 @@ export default function ScanView({ onNavigate }: ScanViewProps) {
 
     // Keep loop active
     animationFrameRef.current = requestAnimationFrame(scanLoop);
+  };
+
+  // Capture a snapshot of the video frame and decode it instantly
+  const capturePhotoAndScan = () => {
+    setScanError(null);
+    if (!videoRef.current || !canvasRef.current) {
+      setScanError("Camera is not fully initialized. Please wait a moment.");
+      return;
+    }
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    if (ctx && video.videoWidth > 0 && video.videoHeight > 0) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // Draw the current video frame onto the canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      
+      // Attempt decoding on this static frame
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'dontInvert',
+      });
+
+      if (code && code.data) {
+        playSuccessBeep();
+        const parsed = parseQRContent(code.data);
+        setDecodedResult(parsed);
+        setScanError(null);
+        stopCamera();
+      } else {
+        setScanError("No QR code detected in this snapshot. Try aligning the QR code in the center, keeping steady, and clicking 'Take Photo to Scan' again.");
+      }
+    } else {
+      setScanError("Could not retrieve image from video stream. Please make sure the camera feed is active.");
+    }
   };
 
   // Manage transitions between Camera and Upload Tabs
@@ -522,6 +563,26 @@ export default function ScanView({ onNavigate }: ScanViewProps) {
                     </div>
                   )}
                 </div>
+
+                {cameraActive && (
+                  <div className="mt-4" id="manual-capture-panel">
+                    <button
+                      onClick={capturePhotoAndScan}
+                      className="w-full flex items-center justify-center space-x-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-all py-3.5 font-sans text-sm font-bold text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] cursor-pointer uppercase tracking-wider"
+                      id="btn-capture-snapshot"
+                    >
+                      <Camera className="h-5 w-5 text-white animate-pulse" />
+                      <span>Take Photo to Scan</span>
+                    </button>
+                  </div>
+                )}
+
+                {scanError && (
+                  <div className="mt-4 flex items-start space-x-2.5 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-red-400 text-xs" id="manual-scan-error">
+                    <AlertCircle className="h-4.5 w-4.5 text-red-400 shrink-0 mt-0.5" />
+                    <p className="font-sans leading-normal">{scanError}</p>
+                  </div>
+                )}
 
                 <div className="mt-4 flex items-center space-x-2.5 rounded-xl border border-white/5 bg-[#0a0a0a]/20 p-4 max-w-xl mx-auto">
                   <Info className="h-4.5 w-4.5 text-blue-500 shrink-0" />

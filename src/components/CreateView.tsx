@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Link2, AlignLeft, Phone, Wifi, Mail, MessageSquare, Image as ImageIcon, 
-  Download, Copy, Check, Sparkles, RefreshCw, ChevronRight, UploadCloud, HelpCircle
+  Link2, AlignLeft, Phone, Wifi, Mail, MessageSquare,
+  Download, Copy, Check, Sparkles, RefreshCw, ChevronRight, HelpCircle
 } from 'lucide-react';
 import { buildWiFiString, buildEmailString, buildSMSString } from '../utils';
 
@@ -34,13 +34,6 @@ export default function CreateView({ onNavigate }: CreateViewProps) {
   // SMS states
   const [smsPhone, setSmsPhone] = useState('');
   const [smsMessage, setSmsMessage] = useState('');
-
-  // Image states
-  const [imageType, setImageType] = useState<'url' | 'upload'>('url');
-  const [imageUrlInput, setImageUrlInput] = useState('');
-  const [imageUploadBase64, setImageUploadBase64] = useState('');
-  const [isCompressing, setIsCompressing] = useState(false);
-  const [compressionRatio, setCompressionRatio] = useState<string>('');
 
   // QR Customization States
   const [fgColor, setFgColor] = useState('#ffffff');
@@ -151,50 +144,6 @@ export default function CreateView({ onNavigate }: CreateViewProps) {
 
     generate();
   }, [qrValue, fgColor, bgColor, qrSize, qrMargin, errorCorrection]);
-
-  // Handle image upload and scale down to fit binary capacity limit
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsCompressing(true);
-    setCompressionRatio('');
-    
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        // Create offscreen canvas for downscaling
-        const canvas = document.createElement('canvas');
-        
-        // QR Code max standard capacity in pure binary is 2,953 bytes.
-        // If we compress image to ~36x36 pixels or 40x40 pixels, JPEG/WebP compressed base64 is usually around 1KB-2KB.
-        // Let's scale down to 36px wide to guarantee it fits safely with room for headers!
-        const scale = 36 / Math.max(img.width, img.height);
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          // Fill background white to avoid transparency issues in small JPEGs
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          
-          // Quality: 0.3 for heavy compression
-          const base64 = canvas.toDataURL('image/jpeg', 0.3);
-          setImageUploadBase64(base64);
-          
-          const origSizeKb = (file.size / 1024).toFixed(1);
-          const compressedSizeKb = (base64.length / 1024).toFixed(1);
-          setCompressionRatio(`Compressed from ${origSizeKb}KB to ${compressedSizeKb}KB`);
-        }
-        setIsCompressing(false);
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  };
 
   // Download QR Code as PNG
   const downloadQRCode = () => {

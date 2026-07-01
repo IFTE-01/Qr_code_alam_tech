@@ -92,16 +92,29 @@ export default function ScanView({ onNavigate }: ScanViewProps) {
       streamRef.current = stream;
       
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.setAttribute('playsinline', 'true'); // Required for iOS
-        videoRef.current.play();
+        const video = videoRef.current;
+        video.setAttribute('playsinline', 'true'); // Required for iOS
+        
+        // Attach onloadedmetadata BEFORE setting srcObject to avoid race conditions
+        video.onloadedmetadata = () => {
+          if (!animationFrameRef.current) {
+            animationFrameRef.current = requestAnimationFrame(scanLoop);
+          }
+        };
+
+        video.srcObject = stream;
+        
+        // Use promise-based play to guarantee status update
+        await video.play();
         setCameraActive(true);
         setCameraError(null);
-        
-        // Start scanning loop once video plays
-        videoRef.current.onloadedmetadata = () => {
-          animationFrameRef.current = requestAnimationFrame(scanLoop);
-        };
+
+        // Fallback if onloadedmetadata already fired or is delayed
+        if (video.readyState >= 1) {
+          if (!animationFrameRef.current) {
+            animationFrameRef.current = requestAnimationFrame(scanLoop);
+          }
+        }
       }
     } catch (err: any) {
       console.error('Camera access failed:', err);
@@ -196,15 +209,15 @@ export default function ScanView({ onNavigate }: ScanViewProps) {
     }
   };
 
-  // Manage transitions between Camera and Upload Tabs
+  // Manage transitions between Camera and Upload Tabs, reacting properly when results are cleared
   useEffect(() => {
-    if (scanMode === 'camera') {
+    if (scanMode === 'camera' && !decodedResult) {
       startCamera();
     } else {
       stopCamera();
     }
     return () => stopCamera();
-  }, [scanMode]);
+  }, [scanMode, decodedResult]);
 
   // Handle uploaded image scanning
   const [isDragging, setIsDragging] = useState(false);
@@ -476,7 +489,6 @@ export default function ScanView({ onNavigate }: ScanViewProps) {
               <button
                 onClick={() => {
                   setDecodedResult(null);
-                  if (scanMode === 'camera') startCamera();
                 }}
                 className="flex items-center justify-center space-x-2 rounded-xl border border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 active:scale-[0.98] transition-all py-3 font-sans text-xs font-semibold text-blue-400 cursor-pointer"
                 id="btn-scan-again"

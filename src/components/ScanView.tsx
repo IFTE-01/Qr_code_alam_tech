@@ -166,10 +166,9 @@ export default function ScanView({ onNavigate }: ScanViewProps) {
   }, [scanMode]);
 
   // Handle uploaded image scanning
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const [isDragging, setIsDragging] = useState(false);
 
+  const processFile = (file: File) => {
     setUploadError(null);
     setDecodedResult(null);
     setIsProcessingUpload(true);
@@ -208,6 +207,67 @@ export default function ScanView({ onNavigate }: ScanViewProps) {
     };
     reader.readAsDataURL(file);
   };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      if (file.type.startsWith('image/')) {
+        processFile(file);
+      } else {
+        setUploadError('Please drop a valid image file (PNG, JPG, SVG, WEBP).');
+      }
+    }
+  };
+
+  // Handle clipboard paste of image files
+  useEffect(() => {
+    if (scanMode !== 'upload') return;
+
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            processFile(file);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, [scanMode]);
 
   // Action helpers based on QR Type
   const copyToClipboard = async (text: string) => {
@@ -477,13 +537,25 @@ export default function ScanView({ onNavigate }: ScanViewProps) {
               <div className="max-w-xl mx-auto space-y-6" id="upload-workspace-panel">
                 <div 
                   onClick={() => fileInputRef.current?.click()}
-                  className="group relative cursor-pointer border-2 border-dashed border-white/10 hover:border-blue-500/30 rounded-2xl bg-[#0a0a0a]/20 p-10 flex flex-col items-center justify-center text-center transition-all shadow-xl"
+                  onDragOver={handleDragOver}
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`group relative cursor-pointer border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center text-center transition-all duration-200 shadow-xl ${
+                    isDragging 
+                      ? 'border-blue-500 bg-blue-500/5 scale-[1.01] shadow-[0_0_25px_rgba(59,130,246,0.15)]' 
+                      : 'border-white/10 hover:border-blue-500/30 bg-[#0a0a0a]/20'
+                  }`}
                   id="scanner-upload-dropzone"
                 >
-                  <Upload className="h-12 w-12 text-gray-500 group-hover:text-blue-500 group-hover:scale-110 transition-all mb-4" />
-                  <h4 className="font-sans text-base font-extrabold text-white mb-2 uppercase tracking-wide">Import QR Code Image</h4>
-                  <p className="font-sans text-sm text-gray-400 max-w-xs mb-1">
-                    Select a photo, screenshot, or downloaded image from your gallery.
+                  <Upload className={`h-12 w-12 transition-all mb-4 ${
+                    isDragging ? 'text-blue-400 scale-110' : 'text-gray-500 group-hover:text-blue-500 group-hover:scale-110'
+                  }`} />
+                  <h4 className="font-sans text-base font-extrabold text-white mb-2 uppercase tracking-wide">
+                    {isDragging ? 'Drop Image Here' : 'Import or Paste QR Code'}
+                  </h4>
+                  <p className="font-sans text-sm text-gray-400 max-w-sm mb-1">
+                    {isDragging ? 'Release to instantly scan and decode the QR code.' : 'Drag & drop image here, paste (Ctrl+V) from clipboard, or click to browse.'}
                   </p>
                   <p className="font-sans text-xs text-slate-500">
                     Supports JPG, PNG, WEBP, or SVG
